@@ -1,9 +1,8 @@
 import pathlib, audible, httpx, os
 from tqdm import tqdm
 
-# get download link(s) for book
+
 def _get_download_link(auth, asin, codec="LC_128_44100_stereo"):
-    # need at least v0.4.0dev
     if auth.adp_token is None:
         raise Exception("No adp token present. Can't get download link.")
 
@@ -35,11 +34,12 @@ def _get_download_link(auth, asin, codec="LC_128_44100_stereo"):
 
 
 def download_file(url):
-
     with httpx.stream("GET", url) as r:
         try:
             title = r.headers["Content-Disposition"].split("filename=")[1]
             length = int(r.headers["Content-Length"])
+            if(not os.path.exists("audiobooks")):
+                os.mkdir("audiobooks")
             filename = pathlib.Path.cwd() / "audiobooks" / title
 
             with open(filename, 'wb') as f:
@@ -68,33 +68,42 @@ if __name__ == "__main__":
             filename=Auth_file,
             password="1234",
             encryption="bytes")
-
         
     auth = audible.FileAuthenticator(
             filename=Auth_file,
-            password="1234",
-        )
+            password="1234")
         
-
     client = audible.Client(auth)
 
     library = client.get("library", num_results=1000)
-    # asins = [book["asin"] for book in library["items"]]
+    books = {book["title"]:book["asin"] for book in library["items"]}
+    titles = [title for title in books.keys()]
 
-    # for asin in asins:
-    #     dl_link = _get_download_link(auth, asin)
+    for index, title in enumerate(titles):
+        print(str(index + 1) + ") " + title)
 
-    #     if dl_link:
-    #         print(f"download link now: {dl_link}")
-    #         status = download_file(dl_link)
-    #         print(f"downloaded file: {status}")
+    print("\nEnter the number of the book you want to download"+
+        "\nIf you want to download multiple book enter the "+
+        "\nnumber of the first and the last book separated by a"+
+        "\n dash and without spaces between (i.e. 0-10)\n")
+    book_range = input("Enter: ")
+    book_range = book_range.split("-")
 
-    asins = [book["asin"] for book in library["items"]]
-    
+    if(len(book_range) == 2):
+        first_book,last_book = book_range
+        first_book = int(first_book) - 1
+        last_book = int(last_book)
+    elif(len(book_range) == 1):
+        first_book = int(book_range[0]) - 1
+        last_book = first_book + 1
+    else:
+        raise Exception("Invalid input!")
 
-    dl_link = _get_download_link(auth, asins[0])
+    for index in range(first_book, last_book):
+        asin = books[titles[index]]
+        dl_link = _get_download_link(auth, asin)
 
-    if dl_link:
-        print(f"download link now: {dl_link}")
-        status = download_file(dl_link)
-        print(f"downloaded file: {status}")
+        if dl_link:
+            print(f"Download link now: {titles[index]}")
+            status = download_file(dl_link)
+            print(f"Downloaded file: {status}")
