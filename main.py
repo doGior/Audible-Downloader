@@ -1,8 +1,11 @@
-import pathlib, audible, httpx, os
+import audible, httpx, os, subprocess, config
+from shutil import which
 from tqdm import tqdm
 
 
 def _get_download_link(auth, asin, codec="LC_128_44100_stereo"):
+    ''' (FileAuthenticator, str, str) --> str | None
+    Gets the download url for the given book '''
     if auth.adp_token is None:
         raise Exception("No adp token present. Can't get download link.")
 
@@ -22,8 +25,6 @@ def _get_download_link(auth, asin, codec="LC_128_44100_stereo"):
             auth=auth
         )
 
-        # prepare link
-        # see https://github.com/mkb79/Audible/issues/3#issuecomment-518099852
         link = r.headers['Location']
         tld = auth.locale.domain
         new_link = link.replace("cds.audible.com", f"cds.audible.{tld}")
@@ -34,13 +35,15 @@ def _get_download_link(auth, asin, codec="LC_128_44100_stereo"):
 
 
 def download_file(url):
+    ''' (str) --> str
+    Downloads the file from the given url and returns its path '''
     with httpx.stream("GET", url) as r:
         try:
             title = r.headers["Content-Disposition"].split("filename=")[1]
             length = int(r.headers["Content-Length"])
-            if(not os.path.exists("audiobooks")):
-                os.mkdir("audiobooks")
-            filename = pathlib.Path.cwd() / "audiobooks" / title
+            if(not os.path.exists("tmp")):
+                os.mkdir("tmp")
+            filename = os.path.join(os.path.curdir, "tmp"+title)
 
             with open(filename, 'wb') as f:
                 with tqdm(total=length, unit_scale=True, unit_divisor=1024, unit="B") as progress:
@@ -53,10 +56,25 @@ def download_file(url):
         except KeyError:
             return "Nothing downloaded"
 
+def ConvertToMp3(input_file, ab, out_file):
+    ''' (str, str, str) --> str
+    Uses ffmpeg (it has to be installed) to convert the file '''
+
+    out_file + ".mp3"
+    ffmpeg = which('ffmpeg')
+    if not ffmpeg:
+        raise Exception('ffmpeg not found!')
+    cmd = ["ffmpeg", "-activation_bytes", ab, "-i", input_file, out_file]
+    subprocess.check_output(cmd, universal_newlines=True)
+    return out_file
+
+
 
 if __name__ == "__main__":
+    #Name of the encrypted file with Amazon credentials
     Auth_file = "Credentials"
     
+    #If it doesn't exists, it will be created
     if(not os.path.exists(Auth_file)):
         auth = audible.LoginAuthenticator(
             input("Username: "),
@@ -66,26 +84,30 @@ if __name__ == "__main__":
 
         auth.to_file(
             filename=Auth_file,
-            password="1234",
+            password=config.credentials_pass,
             encryption="bytes")
         
     auth = audible.FileAuthenticator(
             filename=Auth_file,
-            password="1234")
+            password=config.credentials_pass)
         
     client = audible.Client(auth)
+    activation_bytes = auth.get_activation_bytes()
 
+    #Retrieving audiobooks
     library = client.get("library", num_results=1000)
     books = {book["title"]:book["asin"] for book in library["items"]}
     titles = [title for title in books.keys()]
 
+    #Printing list of audiobooks
     for index, title in enumerate(titles):
         print(str(index + 1) + ") " + title)
 
+    #Input of the book(s) that will be downloaded
     print("\nEnter the number of the book you want to download"+
-        "\nIf you want to download multiple book enter the "+
-        "\nnumber of the first and the last book separated by a"+
-        "\n dash and without spaces between (i.e. 0-10)\n")
+        "\nIf you want to download multiple book enter the"+
+        "\nnumber of the first and the last book separated"+
+        "\nby a dash and without spaces between (i.e. 0-10)\n")
     book_range = input("Enter: ")
     book_range = book_range.split("-")
 
@@ -98,12 +120,16 @@ if __name__ == "__main__":
         last_book = first_book + 1
     else:
         raise Exception("Invalid input!")
-
+    
+    #Downloading and converting books
     for index in range(first_book, last_book):
         asin = books[titles[index]]
         dl_link = _get_download_link(auth, asin)
 
         if dl_link:
-            print(f"Download link now: {titles[index]}")
+            print(f"Downloading now: {titles[index]}")
             status = download_file(dl_link)
             print(f"Downloaded file: {status}")
+            print("Now converting")
+            status = ConvertToMp3(status, activation_bytes, os.path.join(config.download_folder,titles[index]))
+            print(f"Converted file: {status}")
