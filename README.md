@@ -13,7 +13,7 @@ For any problems, please google first
 For any Mac OS related question I probably can't answer since I have no Apple devices
 
 # Installation
-
+It's the same for Windows, Linux and Mac OS
 ```bash
 git clone "https://github.com/doGior/Audible-Downloader"
 cd Audible-Downloader
