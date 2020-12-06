@@ -43,7 +43,7 @@ def download_file(url):
             length = int(r.headers["Content-Length"])
             if(not os.path.exists("tmp")):
                 os.mkdir("tmp")
-            filename = os.path.join(os.path.curdir, "tmp"+title)
+            filename = os.path.join(os.path.curdir, os.path.join("tmp", title))
 
             with open(filename, 'wb') as f:
                 with tqdm(total=length, unit_scale=True, unit_divisor=1024, unit="B") as progress:
@@ -60,12 +60,13 @@ def ConvertToMp3(input_file, ab, out_file):
     ''' (str, str, str) --> str
     Uses ffmpeg (it has to be installed) to convert the file '''
 
-    out_file + ".mp3"
-    ffmpeg = which('ffmpeg')
+    out_file += ".mp3"
+    ffmpeg = which(config.ffmpeg)
     if not ffmpeg:
         raise Exception('ffmpeg not found!')
-    cmd = ["ffmpeg", "-activation_bytes", ab, "-i", input_file, out_file]
+    cmd = [config.ffmpeg, "-activation_bytes", ab, "-i", input_file, out_file]
     subprocess.check_output(cmd, universal_newlines=True)
+    os.remove(input_file)
     return out_file
 
 
@@ -79,20 +80,28 @@ if __name__ == "__main__":
         auth = audible.LoginAuthenticator(
             input("Username: "),
             input("Password: "),
-            locale="it",
+            locale=input("Enter one of the following country" +
+            "\ncode 'de', 'us', 'ca', 'uk', 'au', 'fr', 'jp', 'it', 'in' \nEnter: "),
             register=True)
 
+        print("This information will be stored in an encrypted" +
+        "\nfile so you don't have to insert them anymore.")
+        config.credentials_pass = input("Enter a password for the encryption: ")
         auth.to_file(
             filename=Auth_file,
             password=config.credentials_pass,
             encryption="bytes")
-        
-    auth = audible.FileAuthenticator(
-            filename=Auth_file,
-            password=config.credentials_pass)
+    else:
+        auth = audible.FileAuthenticator(
+                filename=Auth_file,
+                password=config.credentials_pass)
         
     client = audible.Client(auth)
     activation_bytes = auth.get_activation_bytes()
+
+    #Checking download folder
+    if(not os.path.exists(config.download_folder)):
+        os.mkdir(config.download_folder)
 
     #Retrieving audiobooks
     library = client.get("library", num_results=1000)
@@ -104,9 +113,9 @@ if __name__ == "__main__":
         print(str(index + 1) + ") " + title)
 
     #Input of the book(s) that will be downloaded
-    print("\nEnter the number of the book you want to download"+
-        "\nIf you want to download multiple book enter the"+
-        "\nnumber of the first and the last book separated"+
+    print("\nEnter the number of the book you want to download" +
+        "\nIf you want to download multiple book enter the" +
+        "\nnumber of the first and the last book separated" +
         "\nby a dash and without spaces between (i.e. 0-10)\n")
     book_range = input("Enter: ")
     book_range = book_range.split("-")
@@ -125,11 +134,12 @@ if __name__ == "__main__":
     for index in range(first_book, last_book):
         asin = books[titles[index]]
         dl_link = _get_download_link(auth, asin)
-
+    
         if dl_link:
             print(f"Downloading now: {titles[index]}")
             status = download_file(dl_link)
             print(f"Downloaded file: {status}")
+
             print("Now converting")
-            status = ConvertToMp3(status, activation_bytes, os.path.join(config.download_folder,titles[index]))
+            status = ConvertToMp3(status, activation_bytes, os.path.join(config.download_folder, titles[index].replace(" ", "")))
             print(f"Converted file: {status}")
