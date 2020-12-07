@@ -6,7 +6,7 @@ If you want to download multiple books you have to type the number corresponding
 
 # Prerequisites
 
-I assume you have already installed python (which is preinstalled in Linux and Mac OS) and ffmpeg. Otherwise these are the official download sites: [python]([Download Python | Python.org](https://www.python.org/downloads/)), [ffmpeg](https://ffmpeg.org/download.html) 
+I assume you have already installed python (which is preinstalled in Linux and Mac OS) and ffmpeg. Otherwise these are the official download sites: [python](https://www.python.org/downloads/), [ffmpeg](https://ffmpeg.org/download.html) 
 
 For any problems, please google first
 
