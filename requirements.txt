@@ -15,7 +15,7 @@ pyasn1==0.4.8
 pymongo==3.11.1
 requests==2.25.0
 rfc3986==1.4.0
-rsa==4.6
+rsa==4.7
 sniffio==1.2.0
 soupsieve==2.0.1
 tqdm==4.54.1
