@@ -20,6 +20,10 @@ cd Audible-Downloader
 pip install -r requirements.txt
 ```
 
+# Usage
+In order to run this script you have to be inside the terminal and navigate to the downloaded folder, from there you have to run `python3 main.py` and follow the instructions
+
+
 # Note
 
 To change download folder, encryption password and to ffmpeg path (this one only in case of problem) you can modify the config.py file
